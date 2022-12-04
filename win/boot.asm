@@ -1,3 +1,5 @@
+; 使用相对偏移量的段跳转和近跳转
+
 start:
     mov ax, 0xb800
     mov ds, ax
@@ -19,7 +21,7 @@ start:
 
     mov byte [0x0a], 'b'
     mov byte [0x0b], 0x04
-
+dest:
     mov byte [0x0c], 'l'
     mov byte [0x0d], 0x04
 
@@ -29,10 +31,13 @@ start:
     mov byte [0x10], '.'
     mov byte [0x11], 0x04
 
-    mov bx, 0x7c00+again
+
 ; 起循环作用
+; 标号代表的是离他最近的指令的汇编地址，而jmp 实际需要跳转的是段内偏移地址
+; 但是目标地址相对地址不会变, 跳转可以向前跳也可以向后跳
+; 跳的不太远在-128在128之间，是两个字节，机器码为 EB 8位的相对偏移量
 again:
-    jmp bx ; 绝对间接近跳转，在一个段的内部跳转， 跳转的目标位置不是在指令中直接给出的，而是通过寄存器bx间接给出的，给出的地址是目标位置的实际偏移地址，是一个绝对地址
+    jmp near again ; 短跳转， 编译后是两个字节，short 可以有也可以没有，三个字节的是E9 16 位的 关键字是near
 current:
     times 510-(current-start) db 0
 
