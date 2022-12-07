@@ -1,0 +1,123 @@
+; 将数字字符写入显存
+; intel 处理器不允许指令的两个操作数都是内存地址，需要使用寄存器中转 
+
+; 加法运算符
+; 显示数字
+; 使用标号访问内存数据
+; 不定义buffer，直接使用current定义的空间也是可以的，这里定义buffer是为了便于理解
+start:
+; 第一个数位
+    mov ax, 65535
+    xor dx, dx
+    mov bx, 10
+    div bx      ; ax = 商（6553）， dx = 余数（5）
+    ;为了显示这个数字，需要将其转换为数字字符，加上0x30
+    add dl, 0x30 ; 余数实际上是保存在dl中的-->将数字转换为对应的数字字符
+
+    ; 设置段寄存器
+    mov cx, 0
+    mov ds, cx
+    ; 访问buffer的第一个字节
+    mov [0x7c00+buffer], dl ; 将dl处的字符传送到段内这个偏移地址处， 访问的实际上就是下面的db 0 这个位置， 因为dl是8位的，所以传送操作是以字节为单位进行的
+; 第二个数位
+    xor dx, dx ; 余数已经被妥善保存了，这时候清零， 因为他需要当作被除数的高16位
+    div bx
+    add dl, 0x30
+    mov [0x7c00 + buffer + 1], dl
+; 第三~五个数位
+    xor dx, dx
+    div bx
+    add dl, 0x30
+    mov [0x7c00 + buffer + 2], dl
+    xor dx, dx
+    div bx
+    add dl, 0x30
+    mov [0x7c00 + buffer + 3], dl
+    xor dx, dx
+    div bx
+    add dl, 0x30
+    mov [0x7c00 + buffer + 4], dl
+
+; 将分解完的字符传入显存
+; 第一个字符
+    ;把最后一次分解出来的字符传送到寄存器al中临时保存
+    mov al, [0x7c00 + buffer + 4]
+    ; 将al内的字符编码传送到显存内偏移地址为0的地方
+    ; 显存的访问也是段地址 + 偏移地址的方式访问
+    ; 显存的段地址是0xb800, 在访问显存之前，必须把0xb800传送到数据段寄存器
+    mov cx, 0xb800 ;传送段地址也需要通用寄存器中转，不能直接传
+    mov ds, cx
+    ;将寄存器al内的字符编码写入显存内偏移地址为0的地方，对应显示器左上角的位置
+    mov [0x00], al ; [0x00]对应显存内的偏移地址
+    ; 立即数占用内存可大可小，内存地址本身看不出操作数的大小
+    ; 所以本次操作必须为内存操作数指明大小
+    mov byte [0x01], 0x2f ;写入颜色属性， 绿色背景，亮白色字符
+; 第二个字符
+; 此时因为段寄存器已经改变，这时候还需要变回来，不然没法取字符编码了
+    mov cx, 0
+    mov ds, cx ; 变回段寄存器,将段地址改回0
+
+    ;取字符
+    mov al, [0x7c00 + buffer + 3]
+    ; 写入显存
+    mov cx, 0xb800
+    mov ds, cx ; 设置段地址
+    mov [0x02], al
+    mov byte [0x03], 0x2f
+; 第3～5个字符
+    mov cx, 0
+    mov ds, cx
+    mov al, [0x7c00 + buffer + 2]
+    mov cx, 0xb800
+    mov ds, cx
+    mov [0x04], al
+    mov byte [0x05], 0x2f
+
+    mov cx, 0
+    mov ds, cx
+    mov al, [0x7c00 + buffer + 1]
+    mov cx, 0xb800
+    mov ds, cx
+    mov [0x06], al
+    mov byte [0x07], 0x2f
+
+    mov cx, 0
+    mov ds, cx
+    mov al, [0x7c00 + buffer]
+    mov cx, 0xb800
+    mov ds, cx
+    mov [0x08], al
+    mov byte [0x09], 0x2f
+
+
+
+
+
+
+
+
+
+
+
+
+     
+
+
+
+
+
+    ; 需要将结果保存到内存中，使用伪指令db 开辟空间
+    ; 光有空间还不够，没办法找到他们，还要为他们添加标号
+    ; 这个标号没有冒号结尾，跟前面的不一样, 这是合法的，标号的最后一个字符是冒号，冒号可以省略
+    ; 习惯上，伪指令前面的标号的冒号省略掉
+    ; buffer 代表第一个 0的汇编地址（相对地址,从0开始）
+    buffer db 0, 0, 0, 0, 0 ; 使用db 开辟5个字节的空间，因为65535 有5个数位
+    ; 这里的地址就是0000:0x7c00 + buffer
+    ; 要访问数据，必须使用数据段寄存器ds，因此要把0传递给ds
+
+
+     
+
+
+
+
